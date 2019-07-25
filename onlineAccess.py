@@ -66,7 +66,7 @@ def logPrint(astring):
 # dbpy access - ie database access
 ###################################################################################################################
 
-def getEquip( tags , equip , hightag=201802 ):
+def getEquip( tags , equip , hightag=201901 ):
     '''
     returns data from detector for specified tags, hightag
     input:
@@ -82,7 +82,7 @@ def getEquip( tags , equip , hightag=201802 ):
         logPrint(str(e))
         return np.nan
 
-def getEquipInt( tags , equip , hightag=201802 ):
+def getEquipInt( tags , equip , hightag=201901 ):
     '''
     returns data as integer from detector for specified tags, hightag
     input:
@@ -200,7 +200,7 @@ def getNewestHighTag( bl ):
 # Grabbing data and camera rois
 ###################################################################################################################
 
-def grabPointData( pointDetectors , tags , hightag=201802 ):
+def grabPointData( pointDetectors , tags , hightag=201901 ):
     '''
     Grabs the point detector / equipment read out for each equipment in the pointDetector array of strings for each tag
     input:
@@ -246,7 +246,7 @@ def makeDataFrame( pointData ):
     index = pointData['tags']
     return pd.DataFrame( index=index, data=data )
 
-def grabDetector(det, tags, hightag=201802):
+def grabDetector(det, tags, hightag=201901):
     '''
     Grabs the detector object at the tags
     NOTE: The detector objects quickly leave memory. This cannot be used to look at old images.
@@ -257,8 +257,14 @@ def grabDetector(det, tags, hightag=201802):
     output:
         detector: Size is [ntags, NX, NY, NZ...]
     '''
-    objReader = olpy.StorageReader(det)
-    objBuffer = olpy.StorageBuffer(objReader)
+    try: # this exception sometimes occurs. correct use of this function should include a catch statement somewhere
+        objReader = olpy.StorageReader(det)
+        objBuffer = olpy.StorageBuffer(objReader)
+    except Exception as ex:
+        logPrint(str(ex))
+        logPrint(str(det))
+        #raise ex
+        raise
     
     initialized = False
     errorCount = 0
@@ -305,7 +311,7 @@ def grabNewestDetector(det, bl, refDet='xfel_bl_3_st_5_direct_bm_1_pd/charge'):
     return np.squeeze(detArray), tag[0], hightag
 
 def grabROI(det, tags, X1, X2, Y1, Y2, 
-                 hightag=201802):
+                 hightag=201901):
     '''
     Caslculates roi of detector across tags
     input:
@@ -317,42 +323,42 @@ def grabROI(det, tags, X1, X2, Y1, Y2,
     output:
         roi value across tags
     '''
-    objReader = olpy.StorageReader(det)
-    objBuffer = olpy.StorageBuffer(objReader)
-    
+    try: # this exception sometimes occurs. correct use of this function should include a catch statement somewhere
+        objReader = olpy.StorageReader(det)
+        objBuffer = olpy.StorageBuffer(objReader)
+    except Exception as ex:
+        logPrint(str(ex))
+        logPrint(str(det))
+        #raise ex
+        raise
+
     detROIs = np.array([0. for tag in tags])
 
     errorCount = 0
     
     for idx, tag in enumerate(tags):
-      try:
-        realtag = objReader.collect(objBuffer, tag)
-        detArray = (objBuffer.read_det_data(0)) 
-        detInfo = objBuffer.read_det_info(0)
         try:
-            gain = np.copy(detInfo['mp_absgain'])
-            detArray = detArray*gain
-            detArray[detArray<thresholdValue] = 0.
-        except KeyError as ex:
-            gain = 1.
-        NX,NY = detArray.shape
-        #if X2 > NX:
-        #    detROIs[idx] = 0
-        #    continue
-        #if Y2 > NY:
-        #    detROIs[idx] = 0
-        #    continue
-        detROIs[idx] = np.nansum( detArray[X1:X2,Y1:Y2] ) 
-      except Exception as ex:
-        #raise ex
-        logPrint(str(ex))
-        errorCount +=1
+            realtag = objReader.collect(objBuffer, tag)
+            detArray = (objBuffer.read_det_data(0)) 
+            detInfo = objBuffer.read_det_info(0)
+            try:
+                gain = np.copy(detInfo['mp_absgain'])
+                detArray = detArray*gain
+                detArray[detArray<thresholdValue] = 0.
+            except KeyError as ex:
+                gain = 1.
+            NX,NY = detArray.shape
+            detROIs[idx] = np.nansum( detArray[Y1:Y2,X1:X2] )
+        except Exception as ex:
+            logPrint(str(ex))
+            logPrint(str(det))
+            errorCount +=1
 
     logPrint('Errored on %d of %d tags'%( errorCount , len(tags) ))
         
     return detROIs
 
-def grabROIData( rois , tags , hightag=201802 ):
+def grabROIData( rois , tags , hightag=201901 ):
     '''
     Calculates roi for each roi in the suppled dictionary
     input:
@@ -426,7 +432,8 @@ def grabNewestData( pointDetectors, rois ,
     '''
     hightag = getNewestHighTag( bl )
 
-    tagf = getNewestTag( refDet )    
+    tagf = getNewestTag( refDet )
+       
     tagLow = tagf-ngrab
     if lowestTag2Grab is not None:
         if tagLow <= lowestTag2Grab:
@@ -451,11 +458,11 @@ import threading
 import collections
 
 class dataHandler(threading.Thread):
-	'''
+    '''
 		Generates a thread to pull in the point detector variables asynchronously with plotting.
-	'''
+    '''
     def __init__(self, bl=3, refDet='xfel_bl_3_tc_bm_2_pd/charge', ngrab=120, maxTags2Save = 2000):
-		'''
+        '''
 			Initializes the thread. 
 			input:
 				bl: beamline number as integer
@@ -487,7 +494,7 @@ class dataHandler(threading.Thread):
         self.pointDetectors = {}
         
     def setPointDetector(self, pointDetectors):
-		'''
+        '''
 			Declare the pointdetectors you'd like to extract during the experiment.
 			input:
 				pointDetectors: list of strings, e.g. ['xfel_bl_3_st_5_direct_bm_1_pd/charge','xfel_bl_3_shutter_1_open_valid/status']
@@ -500,7 +507,7 @@ class dataHandler(threading.Thread):
         self.status += ', point detectors initialized'
     
     def setROIs(self, rois):
-		'''
+        '''
 			Declare the ROIs to use in the experiment.
 			input:
 				rois: dictionary of rois like 
@@ -528,7 +535,7 @@ class dataHandler(threading.Thread):
         self.status += ', rois initialized'
         
     def run(self):
-		'''
+        '''
 			Main thread. Begin by running dh.start(), where dh is the initialized dataHandler object.
 		'''
         self.status += ', running'
@@ -554,34 +561,34 @@ class dataHandler(threading.Thread):
                 self.newestTag=max(data['tags'])
             self.totalGrabbed =  len(self.dequeDicts['tags'])
             self.updateDeques( data )
-            while time.time()-t0 < self.ngrab/30.+1./30.:
+            while time.time()-t0 < 1.0 + 1./30.:#while time.time()-t0 < self.ngrab/30.+1./30.:
                 continue
             
         self.status += ', run completed.'
         self.last_status = 'run completed'
 
     def pause(self):
-		'''
+        '''
 		Requests a pause in execution of the thread.
 		Before accessing stored data, wait for self.isPaused eg dh.isPaused to return True.
 		'''
         self.pauseRequested = True
 
     def restart(self):
-		'''
+        '''
 		Restarts execution following a pause.
 		'''
         self.pauseRequested = False
 
     @property
     def elapse(self):
-		'''
+        '''
 		Returns the total execution time of the thread.
 		'''
         return time.time()-self.t0
 
     def updateDeques(self, data):
-		'''
+        '''
 		Updates the stored data using the data returned from grabNewestData(...)
 		Called within thread. Not for user use.
 		'''
@@ -595,13 +602,13 @@ class dataHandler(threading.Thread):
         self.lock.release()
 
     def keys(self):
-		'''
+        '''
 		Returns the detectors and ROIs being stored.
 		'''
         return self.dequeDicts.keys()
 
     def __getitem__(self,key):
-		'''
+        '''
 		Returns the data stored in the deque.
 		'''
         self.lock.acquire()
@@ -610,13 +617,13 @@ class dataHandler(threading.Thread):
         return data
 
     def requestStop(self):
-		'''
+        '''
 		Requests termination of thread.
 		'''
         self.stopped = True
         
     def printStatus(self):
-		'''
+        '''
 		Prints current status of thread.
 		'''
         if 'running' in self.status:
@@ -625,7 +632,7 @@ class dataHandler(threading.Thread):
             print(self.status)
         
     def lastStatus(self):
-		'''
+        '''
 		Returns last status of thread.
 		'''
         return self.last_status+': '+str(self.totalGrabbed)
