@@ -58,3 +58,11 @@ This code only works if the detector exists in the datastream.
 If the detector does not exist, it will crash.
 If you want to test the code before the detector is installed in the hutch, there exists an anapc simulator on the HPC computers.
 
+### ROIs selected Graphically by Users
+operatorROI.py
+
+This file must be reconfigured for a particular experiment by editing the name of the detector as well as the name of the I0 point detector.
+
+This file retrieves 10 images by default using onlineAccess and the method in array-detector-analysis above. It then allows the user to draw an ROI. Once the ROI is selected the program retrieves the current detector image as often as possible, associated point detectors with the image and processes the data in one python process and ques it for graphing in another python process. The data is averaged until the plotting window is closed.
+
+There are plans to improve this method for a future SACLA experiment using more retrieval processes and other worker threads that will process the data separately from the thread that grabs the data. This was simply a proof of concept.
