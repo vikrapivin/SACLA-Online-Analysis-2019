@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 # SACLA database library and online analysis library
-sys.path.append('/home/software/SACLA_tool/local/python3.5/lib/python3.5/site-packages')
+sys.path.append('/prj/SACLA_tool/lib')
 import dbpy, olpy
 
 # Import custom online library
