@@ -44,7 +44,7 @@ def display_roi(roi_disp, ax, **linekwargs):
 NX = 512
 NY = 1024
 
-def g( detectorName, bl=3, refDet='xfel_bl_3_tc_bm_2_pd/charge' ):
+def grabDetector( detectorName, bl=3, refDet='xfel_bl_3_tc_bm_2_pd/charge' ):
     if detectorName is 'debug':
         dummyTag = onlineAccess.getNewestTag('xfel_bl_3_tc_bm_2_pd/charge' )
         dummyHightag = onlineAccess.getCurrentHighTag(3)
